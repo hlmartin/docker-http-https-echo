@@ -1,24 +1,29 @@
-var express = require('express')
-const morgan = require('morgan');
-var http = require('http')
-var https = require('https')
-var app = express()
-const os = require('os');
-const jwt = require('jsonwebtoken');
-var concat = require('concat-stream');
+var express = require("express");
+const morgan = require("morgan");
+var http = require("http");
+var https = require("https");
+var app = express();
+const os = require("os");
+const jwt = require("jsonwebtoken");
+var concat = require("concat-stream");
 
-app.set('json spaces', 2);
+const http_port = process.env.HTTP_PORT || 80;
+const https_port = process.env.HTTPS_PORT || 443;
 
-app.use(morgan('combined'));
+app.set("json spaces", 2);
 
-app.use(function(req, res, next){
-  req.pipe(concat(function(data){
-    req.body = data.toString('utf8');
-    next();
-  }));
+app.use(morgan("combined"));
+
+app.use(function(req, res, next) {
+  req.pipe(
+    concat(function(data) {
+      req.body = data.toString("utf8");
+      next();
+    })
+  );
 });
 
-app.all('*', (req, res) => {
+app.all("*", (req, res) => {
   const echo = {
     path: req.path,
     headers: req.headers,
@@ -42,38 +47,38 @@ app.all('*', (req, res) => {
     if (!token) {
       echo.jwt = token;
     } else {
-      const decoded = jwt.decode(token, {complete: true});
+      const decoded = jwt.decode(token, { complete: true });
       echo.jwt = decoded;
     }
   }
   res.json(echo);
-  console.log('-----------------')
+  console.log("-----------------");
   console.log(echo);
 });
 
 const sslOpts = {
-  key: require('fs').readFileSync('privkey.pem'),
-  cert: require('fs').readFileSync('fullchain.pem'),
+  key: require("fs").readFileSync("privkey.pem"),
+  cert: require("fs").readFileSync("fullchain.pem")
 };
 
-http.createServer(app).listen(80);
-https.createServer(sslOpts,app).listen(443);
+http.createServer(app).listen(http_port);
+https.createServer(sslOpts, app).listen(https_port);
 
 let calledClose = false;
 
-process.on('exit', function () {
+process.on("exit", function() {
   if (calledClose) return;
-  console.log('Got exit event. Trying to stop Express server.');
+  console.log("Got exit event. Trying to stop Express server.");
   server.close(function() {
     console.log("Express server closed");
   });
 });
 
-process.on('SIGINT', function() {
-  console.log('Got SIGINT. Trying to exit gracefully.');
+process.on("SIGINT", function() {
+  console.log("Got SIGINT. Trying to exit gracefully.");
   calledClose = true;
   server.close(function() {
     console.log("Exoress server closed. Asking process to exit.");
-    process.exit()
+    process.exit();
   });
 });
